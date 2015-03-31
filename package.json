@@ -1,0 +1,17 @@
+{
+  "name": "ddns",
+  "version": "0.0.1",
+  "description": "dns for docker",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "docker-events": "0.0.2",
+    "dockerode": "^2.1.1",
+    "minimist": "^1.1.1",
+    "node-etcd": "^4.0.1"
+  }
+}

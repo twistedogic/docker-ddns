@@ -13,7 +13,7 @@ if (argv.h || !argv.etcd || !argv.marathon || !argv.etcd.split(':')[1] || !argv.
 var domain = argv.domain || 'docker.local.'
 var domainkey = domain.split('.').reverse();
 domainkey.shift();
-domainkey = domainkey.join('/');
+domainkey = 'skydns/' + domainkey.join('/');
 var mesos = argv.mesos;
 var etc = {
     host:argv.etcd.split(':')[0],
@@ -29,14 +29,8 @@ var dnsconfig = {
     nameservers: ['8.8.8.8:53','8.8.4.4:53'],
     domain: domain
 };
-etcd.set("skydns/config",JSON.stringify(dnsconfig),function(err){
-    // if(!err){
-    //     request.get('http://' + mesos + '/master/state.json',function(error,res,body){
-    //         var slaves = body.activated_slaves;
-    //         var 
-    //     })
-    // };
-});
+etcd.set("skydns/config",JSON.stringify(dnsconfig));
+//watch
 var watcher = etcd.watcher("record/change",{ recursive: true })
 watcher.on("change", function(res){
     etcd.get("dnscluster/",{ recursive: true },function(err,data){
@@ -45,26 +39,29 @@ watcher.on("change", function(res){
             if(nodes[i].dir){
                 var containers = nodes[i];
                 for (var j = containers.nodes.length - 1; j >= 0; j--) {
-                    var ip = {
-                        host:containers.nodes[j].value
-                    };
                     var nodekey = containers.nodes[j].key;
-                    var key = nodekey.split('/');
-                    key = key[key.length - 1];
-                    if(ip.host.split('.').length > 2){
-                        etcd.set(domainkey + '/' + key, JSON.stringify(ip),{ ttl: 3600 });
-                        console.log(key + ' : ' + ip.host + " Updated");
+                    var nodevalue = JSON.parse(containers.nodes[j].value);
+                    var ip = nodevalue.ip;
+                    var uuid = nodevalue.uuid;
+                    var name = nodevalue.name;
+                    var deleted = nodevalue.deleted;
+                    var dnskey = nodevalue.dnskey;
+                    if(name){
+                        var dnsname = domainkey + '/' + name; 
                     } else {
-                        etcd.del(domainkey + '/' + key);
-                        etcd.del(nodekey);
-                        console.log(key + ' : ' + ip.host + " Removed");
+                        var dnsname = domainkey + '/' + uuid;
                     }
+                    etcd.set(dnsname, JSON.stringify({host:ip}));
+                    etcd.set(nodekey, JSON.stringify({
+                        uuid: uuid,
+                        name: name,
+                        deleted: 0,
+                        dnskey: dnsname,
+                        ip:ip
+                    }));
+                    console.log(nodekey + " updated");
                 }
             }
         }
     });
 });
-// basic logic
-// if no name then use docker id; if DOCKER_DNSNAME then use DOCKER_DNSNAME-#-host
-// if HA true point to HA proxy
-// multiple docker host

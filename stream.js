@@ -32,18 +32,25 @@ var emitter = new DockerEvents({
 docker.listContainers(function (err, containers) {
     for (var i = 0; i < containers.length; i++) {
         docker.getContainer(containers[i].Id).inspect(function (e, data){
+            var json = {};
             var env = data.Config.Env;
-            var ip = data.NetworkSettings.IPAddress;
-            var name = data.Config.Hostname;
-            // for (var j = 0; j < env.length; j++) {
-            //     var str = env[j];
-            //     var n = str.indexOf("DOCKER_DNSNAME");
-            //     if (n > -1){
-            //         // host and multi-host checking
-            //         name = str.split('=')[1];
-            //     }
-            // }
-            etcd.set("dnscluster/" + node + "/" + name, ip);
+            json.ip = data.NetworkSettings.IPAddress;
+            json.uuid = data.Config.Hostname;
+            json.deleted = false;
+            for (var j = 0; j < env.length; j++) {
+                var str = env[j];
+                var n = str.indexOf("DOCKER_DNSNAME");
+                if (n > -1){
+                    // host and multi-host checking
+                    json.name = str.split('=')[1];
+                }
+            }
+            etcd.get("dnscluster/" + node + "/" + json.uuid, function(err,data){
+                if(err){
+                    etcd.set("dnscluster/" + node + "/" + json.uuid, JSON.stringify(json));
+                    console.log(json);
+                }
+            });
             etcd.set("record/change", node);
             console.log('initialized');
         });
@@ -65,12 +72,26 @@ emitter.on("start", function(message) {
     docker.listContainers(function (err, containers) {
         for (var i = 0; i < containers.length; i++) {
             docker.getContainer(containers[i].Id).inspect(function (e, data){
+                var json = {};
                 var env = data.Config.Env;
-                var ip = data.NetworkSettings.IPAddress;
-                var name = data.Config.Hostname;
-                etcd.set("dnscluster/" + node + "/" + name, ip);
+                json.ip = data.NetworkSettings.IPAddress;
+                json.uuid = data.Config.Hostname;
+                json.deleted = 0;
+                for (var j = 0; j < env.length; j++) {
+                    var str = env[j];
+                    var n = str.indexOf("DOCKER_DNSNAME");
+                    if (n > -1){
+                        // host and multi-host checking
+                        json.name = str.split('=')[1];
+                    }
+                }
+                etcd.get("dnscluster/" + node + "/" + json.uuid, function(err,data){
+                    if(err){
+                        etcd.set("dnscluster/" + node + "/" + json.uuid, JSON.stringify(json));
+                        console.log(json);
+                    }
+                })
                 etcd.set("record/change", node);
-                console.log(name + ' : ' + ip + ' updated');
             });
         }
     });
@@ -78,10 +99,14 @@ emitter.on("start", function(message) {
 
 emitter.on("die", function(message) {
     console.log(message);
-    docker.getContainer(message.id).inspect(function (e, data){
-        var ip = data.NetworkSettings.IPAddress;
-        etcd.set("dnscluster/" + node + "/" + name, 'delete');
-        etcd.set("record/change", node);
-        console.log(name + ' : ' + ip + ' removed');
+    var uuid = message.id;
+    var id = uuid.substring(0,12);
+    etcd.get("dnscluster/" + node + "/" + id, function(err, data){
+        var json = JSON.parse(data.node.value);
+        console.log(json.dnskey);
+        etcd.del(json.dnskey);
+        console.log(id + ' removed');
     });
+    etcd.del("dnscluster/" + node + "/" + id);
+    etcd.set("record/change", node);
 });

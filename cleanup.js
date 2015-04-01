@@ -1,6 +1,20 @@
 var Docker = require('dockerode');
-var host = process.argv[2] || '10.0.0.131';
-var port = process.argv[3] || 4243;
+var argv = require('minimist')(process.argv.slice(2));
+//parse options
+if (argv.h || !argv.etcd){
+    console.log("--docker=<docker_host>:<docker_port> [optional] default use unix:///var/run/docker.sock");
+    process.exit(0);
+}
+if (argv.docker){
+    var options = {
+        host: argv.docker.split(':')[0], 
+        port: argv.docker.split(':')[1]
+    };
+} else {
+    var options = {
+        socketPath: '/var/run/docker.sock'
+    };
+}
 var docker = new Docker({host: host, port: port});
 docker.listContainers({all:true},function(err,containers){
     containers.forEach(function (containerInfo) {

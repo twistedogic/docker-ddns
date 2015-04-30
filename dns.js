@@ -3,6 +3,7 @@ var Dockerode = require('dockerode');
 var DockerEvents = require('docker-events');
 var exec = require('child_process').exec;
 var async = require('async');
+var fs = require('fs');
 var is = require('is_js');
 //parse options
 if (argv.h){
@@ -53,7 +54,7 @@ docker.listContainers(function (err, containers) {
                     hostfile.push(r[i][1]+'\t'+r[i][0]);
                 }
             }
-            fs.writeFileSync('/etc/dnsmasq.d/0host',hostfile.join('\n'));
+            fs.writeFileSync('/etc/althosts',hostfile.join('\n'));
             exec('dnsmasq',function(error,stdout,stderr){
                 if(error){
                     console.log(error);
@@ -95,7 +96,7 @@ emitter.on("start", function(message) {
                         hostfile.push(r[i][1]+'\t'+r[i][0]);
                     }
                 }
-                fs.writeFileSync('/etc/dnsmasq.d/0host/',hostfile.join('\n'));
+                fs.writeFileSync('/etc/althosts',hostfile.join('\n'));
                 exec('pkill dnsmasq',function(error,stdout,stderr){
                     if(error){
                         console.log(error);

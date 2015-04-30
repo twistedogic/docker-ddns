@@ -50,7 +50,7 @@ docker.listContainers(function (err, containers) {
             var hostfile = [];
             for (var i = 0; i < r.length; i++) {
                 if(is.ipv4(r[i][1])){
-                    hostfile.push('address="/'+r[i][0]+'/'+r[i][1]+'"');
+                    hostfile.push(r[i][1]+'\t'+r[i][0]);
                 }
             }
             fs.writeFileSync('/etc/dnsmasq.d/0host',hostfile.join('\n'));
@@ -92,7 +92,7 @@ emitter.on("start", function(message) {
                 var hostfile = [];
                 for (var i = 0; i < r.length; i++) {
                     if(is.ipv4(r[i][1])){
-                        hostfile.push('address="/'+r[i][0]+'/'+r[i][1]+'"');
+                        hostfile.push(r[i][1]+'\t'+r[i][0]);
                     }
                 }
                 fs.writeFileSync('/etc/dnsmasq.d/0host/',hostfile.join('\n'));

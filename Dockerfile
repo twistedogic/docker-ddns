@@ -23,4 +23,4 @@ ADD package.json /app/package.json
 EXPOSE 53
 
 RUN npm install
-CMD node dns.js
+CMD node app.js
